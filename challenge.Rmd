@@ -1,0 +1,53 @@
+---
+title: "Statistics Challenge"
+author: "Tiktaalik roseae"
+date: "2023-09-13"
+output: pdf_document
+---
+
+# V. Programming Challenge
+
+
+## P-hacking COVID-19
+
+To show firsthand how p-hacking and overfitting are possible, we want you to show how these practices can lead to completely nonsensical results.
+
+You can download a complete list of data on COVID-19 (coronavirus) by Our World in Data (https://ourworldindata.org/coronavirus). The data is updated daily and contains the lastest publicly available data on COVID-19 by country and by date. The data report the total cases, new cases, total deaths, new deaths, and hospitalization data of 233 countries and regions. Note that you are not expected to analyze the entire data. You may choose one or a few countries, or select one or some dates for analysis or for comparison.
+
+The challenge is to build an analysis pipeline that produces a "significant" p-value for a relationship between COVID-19 cases and another variable, where the relationship is non-sensical, cannot possibly be causal, or could be argued either way. You may even simulate a fake variable as your key variable of interest. Prepare an Rmarkdown document with the results. At the end of the document write a paragraph to explain your "findings". As if you were in a debate team, pick on a subjective conclusion, and "cherry-pick" partial data to support your claim. Provide a non-statistical explanation for your group's fake result, and/or critique your statistcal approach and why your group got an apparently significant p-value.
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, eval=FALSE, warning=FALSE, message=FALSE)
+```
+
+```{r}
+library(dplyr)
+data <- read.csv("https://covid.ourworldindata.org/data/owid-covid-data.csv",
+     na.strings = "",header=T)
+
+# set up data frame to store final result
+conspiracy_proof <- data.frame()
+
+# loop for each date
+for (d in unique(data$date)){
+  data_date <- data %>% 
+    filter(date == d, continent == "Europe") %>%  # filter for European countries only
+    select("date","new_deaths", "total_vaccinations")  # select for variables of interest
+  data_date <- data_date[complete.cases(data_date), ]  # remove rows with NA values
+  if (nrow(data_date)>=10){  # perform analysis only if there are at least 10 data points for that day
+    # construct a linear model of new_deaths ~ total_vaccinations
+    lm.model <- summary(lm(data_date$new_deaths~data_date$total_vaccinations))
+    # save the slope and p-value of the resulting model for each date into the data frame
+    conspiracy_proof <- rbind(conspiracy_proof, c(d,
+                      lm.model$coef[2,1],
+                      lm.model$coef[2,4]))
+  }
+}
+colnames(conspiracy_proof) <- c("date", "slope", "p.value")
+
+# select for dates that show a significant positive correlation
+conspiracy_proof <- conspiracy_proof %>% filter(slope > 0, p.value < 0.05)
+conspiracy_proof
+```
+
+Vaccination has been widely marketed as a safe and effective method to protect oneself against COVID-19 infection. Here, we analyzed vaccination and death rates in a European population. Our statistical testing shows that in up to 441 days, there exists a statistically significant positive linear relationship (p-value < 0.05) between the number of new deaths in that day and the total number of vaccinations that have been administered. This provides evidence for a positive association between between COVID-19 vaccination and subsequent death from the disease. These concenrning results invite a thorough investigation into the poorly understood negative concequenses of vaccination against COVID-19, and a review of the public health policies currently in place. 
